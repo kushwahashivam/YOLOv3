@@ -49,9 +49,8 @@ class YOLOv3(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         for i in range(self.num_anchor_boxes):
-            x[:, i*(self.num_classes+5)] = torch.sigmoid(x[:, i*(self.num_classes+5)])
-            x[:, i*(self.num_classes+5)+(self.num_classes+1): i*(self.num_classes+5)+(self.num_classes+3)] = (
-                torch.sigmoid(x[:, i*(self.num_classes+5)+(self.num_classes+1): i*(self.num_classes+5)+(self.num_classes+3)])
+            x[:, i*(self.num_classes+5): i*(self.num_classes+5)+(self.num_classes+3)] = (
+                torch.sigmoid(x[:, i*(self.num_classes+5): i*(self.num_classes+5)+(self.num_classes+3)])
             )
             x[:, i*(self.num_classes+5)+(self.num_classes+3): i*(self.num_classes+5)+(self.num_classes+5)] = (
                 torch.exp(x[:, i*(self.num_classes+5)+(self.num_classes+3): i*(self.num_classes+5)+(self.num_classes+5)])

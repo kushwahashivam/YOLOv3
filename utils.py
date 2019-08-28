@@ -10,3 +10,4 @@ class COCODataset(torch.utils.data.Dataset):
         self.root = root
         self.ann_file = ann_file
         self.cocods = tv.datasets.CocoDetection(self.root, self.ann_file)
+        
