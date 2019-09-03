@@ -48,9 +48,8 @@ from utils import COCODataset, draw_bboxes
 # pprint(type(lbl))
 # pprint(lbl)
 
-root = "data/COCO/val2017/"
-ann_file = "data/COCO/annotations/instances_val2017.json"
-coco = COCODataset(root, ann_file)
+root = "data/COCO/cleaned/val2017/"
+coco = COCODataset(root)
 for i in np.random.randint(0, len(coco), 25):
   img, (bboxes, cats) = coco[i]
   img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)

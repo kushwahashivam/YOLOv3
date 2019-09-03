@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import cv2
+import json
 from PIL import Image
 import torch
 import torchvision as tv
@@ -8,17 +9,18 @@ import torchvision as tv
 from config import coco_cat2int, coco_int2cat, cat2cat, cat2int, int2cat
 
 class COCODataset(torch.utils.data.Dataset):
-    def __init__(self, root, ann_file, img_size=640):
+    def __init__(self, root, img_size=640):
         self.root = root
-        self.ann_file = ann_file
         self.img_size = img_size
-        self.cocods = tv.datasets.CocoDetection(self.root, self.ann_file)
+        self.imgs_list = os.listdir(os.path.join(self.root, "images"))
+        self.lbls_dict = json.load(open(os.path.join(self.root, "annotations.json"), "r"))
     
     def __len__(self):
-        return len(self.cocods)
+        return len(self.imgs_list)
 
     def __getitem__(self, index):
-        img, lbls = self.cocods[index]
+        img = Image.open(os.path.join(self.root, "images", self.imgs_list[index]))
+        lbls = self.lbls_dict[self.imgs_list[index]]
         # Get bounding boxes and categories if category exists in our defined categories
         bboxes = []
         categories = []
