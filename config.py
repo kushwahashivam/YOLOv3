@@ -1,3 +1,5 @@
+img_size = 640
+
 lbl_fp = open("labels.txt", "r")
 cats = [line for line in lbl_fp]
 lbl_fp.close()

@@ -19,7 +19,7 @@ class COCODataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         img, lbls = self.cocods[index]
-        # Get bounding boxes and categories if category exists in
+        # Get bounding boxes and categories if category exists in our defined categories
         bboxes = []
         categories = []
         for lbl in lbls:
@@ -39,7 +39,7 @@ class COCODataset(torch.utils.data.Dataset):
         nimg.paste(img, img.getbbox())
         return np.array(nimg), (np.array(bboxes), np.array(categories))
 
-def bboxes_to_labels(img, bboxes, categories, num_anchors, anchor_ratios):
+def bboxes_to_labels(img, bboxes, categories, num_anchors, anchor_ratios, anchors):
     pass
 
 def draw_bboxes(img, bboxes, categories):
@@ -57,3 +57,6 @@ def draw_bboxes(img, bboxes, categories):
         text = int2cat[categories[i]]
         cv2.putText(img, text, (pt1[0]+5, pt1[1]+15), cv2.FONT_HERSHEY_SIMPLEX, .7, (255, 255, 255), lineType=cv2.LINE_AA) 
     return img
+
+def yolo_loss():
+    pass
