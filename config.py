@@ -32,4 +32,12 @@ cat2int = {
     "bird": 3
 }
 
+num_classes = 4
+
 int2cat = dict(zip(cat2int.values(), cat2int.keys()))
+
+anchors = [
+    [90, 90], 
+    [90, 180], 
+    [220, 220]
+]
