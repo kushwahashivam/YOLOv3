@@ -51,9 +51,9 @@ from utils import COCODataset, draw_bboxes
 root = "data/COCO/cleaned/val2017/"
 coco = COCODataset(root)
 for i in np.random.randint(0, len(coco), 25):
-  img, (bboxes, cats) = coco[i]
-  img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-  img = draw_bboxes(img, bboxes, cats)
-  cv2.imshow("Boxes", img)
-  cv2.waitKey(0)
+    img, (bboxes, cats) = coco[i]
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    img = draw_bboxes(img, bboxes, cats)
+    cv2.imshow("Boxes", img)
+    cv2.waitKey(0)
 cv2.destroyAllWindows()

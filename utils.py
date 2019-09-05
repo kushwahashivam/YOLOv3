@@ -6,7 +6,8 @@ from PIL import Image
 import torch
 import torchvision as tv
 
-from config import img_size, coco_cat2int, coco_int2cat, cat2cat, cat2int, int2cat, anchors, num_classes
+from config import img_size, coco_int2cat, cat2cat, cat2int, int2cat, anchors, num_classes
+
 
 class COCODataset(torch.utils.data.Dataset):
     def __init__(self, root, img_size=640):
@@ -14,7 +15,7 @@ class COCODataset(torch.utils.data.Dataset):
         self.img_size = img_size
         self.imgs_list = os.listdir(os.path.join(self.root, "images"))
         self.lbls_dict = json.load(open(os.path.join(self.root, "annotations.json"), "r"))
-    
+
     def __len__(self):
         return len(self.imgs_list)
 
@@ -28,7 +29,7 @@ class COCODataset(torch.utils.data.Dataset):
             category_id = lbl["category_id"]
             category = coco_int2cat[category_id]
             # If category exists in our defined categories then add it to categories
-            #and append the bounding boxes
+            # and append the bounding boxes
             try:
                 category = cat2cat[category]
                 category_id = cat2int[category]
@@ -40,6 +41,7 @@ class COCODataset(torch.utils.data.Dataset):
         nimg = Image.new("RGB", (self.img_size, self.img_size), (0, 0, 0))
         nimg.paste(img, img.getbbox())
         return np.array(nimg), (np.array(bboxes), np.array(categories))
+
 
 def bboxes_to_labels(bboxes, categories, downsample_scale):
     m_anchors = np.array(anchors)
@@ -58,9 +60,9 @@ def bboxes_to_labels(bboxes, categories, downsample_scale):
     # Convert bboxes into x1, y1, x2, y2 format to calculate IOU
     x1y1x2y2 = np.column_stack((bboxes[:, 0], bboxes[:, 1], bboxes[:, 0]+bboxes[:, 2], bboxes[:, 1]+bboxes[:, 3]))
     # Calculate anchor x1, y1, x2, y2. That is, subtract half of width and height of anchor to get x1, y1
-    #and width and height to get x2, y2
+    # and width and height to get x2, y2
     # As there are multiple anchors in our model, we need to calculate anchor x1, y1, x2, y2 separately for them
-    #and find IOU separately
+    # and find IOU separately
     anchor_x1y1x2y2 = []
     for i in range(num_anchors):
         a = m_anchors[i]
@@ -78,16 +80,15 @@ def bboxes_to_labels(bboxes, categories, downsample_scale):
     ious = np.column_stack(ious)
     # Calculate argmax to decide which anchor is given labels
     argmax_ious = np.argmax(ious, axis=1)
-    # Downsample by downsample_scale and Convert center_xy to int format for 
-    #index during assigning of labels in 3D array
-    center_xy_ds_int = (center_xy/downsample_scale).astype(int)
-    #Now we need 
+    # Downsample by downsample_scale and Convert center_xy to int format for
+    # index during assigning of labels in 3D array
+    # Now we need
     #   lambda_obj: object mask for each anchor
     #   lambda_noobj: no object mask for each anchor
     #   label: (center xy coordinates for yolo, width and height of anchor boxes)
-    #To calculate center xy coordinates for yolo, subtract its integer value from downsampled center_xy
-    lambda_obj = np.zeros((num_anchors, img_size//downsample_scale, img_size//downsample_scale))
-    lambda_noobj = np.ones((num_anchors, img_size//downsample_scale, img_size//downsample_scale))
+    # To calculate center xy coordinates for yolo, subtract its integer value from downsampled center_xy
+    obj_mask = np.zeros((num_anchors, img_size//downsample_scale, img_size//downsample_scale))
+    noobj_mask = np.ones((num_anchors, img_size//downsample_scale, img_size//downsample_scale))
     label = np.zeros((num_anchors*(num_classes+5), img_size//downsample_scale, img_size//downsample_scale))
     # Iterate over each bbox and assign labels and mask
     for i in range(len(bboxes)):
@@ -95,8 +96,8 @@ def bboxes_to_labels(bboxes, categories, downsample_scale):
         true_anchor = argmax_ious[i]
         index_mask = true_anchor*(num_classes+5)
         # Set mask values
-        lambda_obj[true_anchor, int(center[1]/img_size), int(center[0]/img_size)] = 1.
-        lambda_noobj[true_anchor, int(center[1]/img_size), int(center[0]/img_size)] = 0.
+        obj_mask[true_anchor, int(center[1]/img_size), int(center[0]/img_size)] = 1.
+        noobj_mask[true_anchor, int(center[1]/img_size), int(center[0]/img_size)] = 0.
         # Objectness score
         label[index_mask+0, int(center[1]/img_size), int(center[0]/img_size)] = 1.
         # Class label
@@ -109,10 +110,48 @@ def bboxes_to_labels(bboxes, categories, downsample_scale):
         label[index_mask+1+num_classes+2, int(center[1]/img_size), int(center[0]/img_size)] = bboxes[i, 2]
         # Height
         label[index_mask+1+num_classes+1, int(center[1]/img_size), int(center[0]/img_size)] = bboxes[i, 3]
-    return lambda_obj, lambda_noobj, label
+    return obj_mask, noobj_mask, label
 
-def yolo_loss(pred, labels, lambda_obj, lambda_noobj):
-    pass
+
+def yolo_loss(pred, labels, obj_mask, noobj_mask, device):
+    lambda_coord = 5.  # Weight for loss in bounding box
+    lambda_noobj = .5  # Weight for loss in confidence for regions with no object
+    num_anchors = len(anchors)
+    batch_size = pred.size(0)
+    # mean_loss = mean_loss + (1/n)*(loss - mean_loss)
+    mean_loss = torch.tensor(0.).to(device)
+    for batch in range(batch_size):
+        loss = torch.tensor(0.).to(device)
+        for anchor in range(num_anchors):
+            index_mask = anchor*(num_classes+5)
+            # Confidence loss
+            conf_loss = torch.sum(obj_mask[batch, anchor] * ((pred[batch, index_mask] - labels[batch, index_mask])**2))
+            conf_loss = conf_loss + lambda_noobj * torch.sum(
+                noobj_mask[batch, anchor] * ((pred[batch, index_mask] - labels[batch, index_mask])**2)
+            )
+            loss = loss + conf_loss
+            # Classification loss
+            clsf_loss = torch.sum(
+                obj_mask[batch, anchor] * ((pred[batch, index_mask+1: index_mask+num_classes+1] - labels[batch, index_mask+1: index_mask+num_classes+1])**2)
+                )
+            loss = loss + clsf_loss
+            # Localization loss
+            # localization loss x, y
+            loc_loss = lambda_coord * torch.sum(
+                obj_mask[batch, anchor] * ((pred[batch, index_mask+num_classes+1: index_mask+num_classes+3] - labels[batch, index_mask+num_classes+1: index_mask+num_classes+3])**2)
+            )
+            # localization loss width
+            loc_loss = loc_loss + lambda_coord * torch.sum(
+                obj_mask[batch, anchor] * ((pred[batch, index_mask+num_classes+3]*(anchors[anchor][0]/img_size) - labels[batch, index_mask+num_classes+3])**2)
+            )
+            # localization loss height
+            loc_loss = loc_loss + lambda_coord * torch.sum(
+                obj_mask[batch, anchor] * ((pred[batch, index_mask+num_classes+3]*(anchors[anchor][1]/img_size) - labels[batch, index_mask+num_classes+3])**2)
+            )
+            loss = loss + loc_loss
+        mean_loss = mean_loss + (1/(batch+1))*(loss - mean_loss)
+    return mean_loss
+
 
 def draw_bboxes(img, bboxes, categories):
     """
@@ -127,8 +166,5 @@ def draw_bboxes(img, bboxes, categories):
         pt2 = int(bbox[0]+bbox[2]), int(bbox[1]+bbox[3])
         img = cv2.rectangle(img, pt1, pt2, (0, 255, 0), 2)
         text = int2cat[categories[i]]
-        cv2.putText(img, text, (pt1[0]+5, pt1[1]+15), cv2.FONT_HERSHEY_SIMPLEX, .7, (255, 255, 255), lineType=cv2.LINE_AA) 
+        cv2.putText(img, text, (pt1[0]+5, pt1[1]+15), cv2.FONT_HERSHEY_SIMPLEX, .7, (255, 255, 255), lineType=cv2.LINE_AA)
     return img
-
-def yolo_loss():
-    pass
