@@ -10,7 +10,7 @@ import torchvision as tv
 from models import YOLOv3
 from utils import COCODataset, draw_bboxes
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # model = tv.models.resnet34().to(device).eval()
 # x = torch.randn(1, 3, 640, 480).to(device)
@@ -34,8 +34,8 @@ from utils import COCODataset, draw_bboxes
 # pred = yolo(inp)
 # print(pred.shape)
 # with torch.no_grad():
-#   for _ in trange(100):
-#     pred = yolo(inp)
+#     for _ in trange(100):
+#         pred = yolo(inp)
 
 # normalize = tv.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 

@@ -8,7 +8,6 @@ from config import num_classes, anchors
 class YOLOv3(nn.Module):
     def __init__(self):
         super().__init__()
-        self.num_classes = num_classes
         self.num_anchor_boxes = len(anchors)
         base = list(tv.models.resnet34(pretrained=True).children())[:6]
         self.base = nn.Sequential(*base).eval()  # Output shape: 128x(H/8)x(w/8)
@@ -40,7 +39,7 @@ class YOLOv3(nn.Module):
             nn.BatchNorm2d(64),
             nn.LeakyReLU(.1)
         )  # Output shape: 64x(H/32)x(w/32)
-        self.conv6 = nn.Conv2d(64, (self.num_classes+5)*self.num_anchor_boxes, kernel_size=1, stride=1, padding=0)
+        self.conv6 = nn.Conv2d(64, (num_classes+5)*self.num_anchor_boxes, kernel_size=1, stride=1, padding=0)
         # Output shape: ((num_classes+5)*num_anchor_boxes)x(H/32)x(w/32)
 
     def forward(self, x):
@@ -52,13 +51,13 @@ class YOLOv3(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         for i in range(self.num_anchor_boxes):
-            index_mask = i*(self.num_classes+5)
+            index_mask = i*(num_classes+5)
             # Sigmoid all the outputs except pw, ph
-            x[:, index_mask: index_mask+self.num_classes+3] = (
-                torch.sigmoid(x[:, index_mask: index_mask+self.num_classes+3])
+            x[:, index_mask: index_mask+num_classes+3] = (
+                torch.sigmoid(x[:, index_mask: index_mask+num_classes+3])
             )
             # Exponentiate pw, ph
-            x[:, index_mask+self.num_classes+3: index_mask+self.num_classes+5] = (
-                torch.exp(x[:, index_mask+self.num_classes+3: index_mask+self.num_classes+5])
+            x[:, index_mask+num_classes+3: index_mask+num_classes+5] = (
+                torch.exp(x[:, index_mask+num_classes+3: index_mask+num_classes+5])
             )
         return x
