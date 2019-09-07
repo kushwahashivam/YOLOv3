@@ -1,5 +1,4 @@
 import os
-import time
 from tqdm import tqdm, trange
 from pprint import pprint
 import numpy as np

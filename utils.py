@@ -132,13 +132,13 @@ def yolo_loss(pred, labels, obj_mask, noobj_mask, device):
                 noobj_mask[batch, anchor] * ((pred[batch, index_mask] - labels[batch, index_mask])**2)
             )
             loss = loss + conf_loss
-            print("Confidence loss: ", conf_loss.item())
+            # print("Confidence loss: ", conf_loss.item())
             # Classification loss
             clsf_loss = torch.sum(
                 obj_mask[batch, anchor] * ((pred[batch, index_mask+1: index_mask+num_classes+1] - labels[batch, index_mask+1: index_mask+num_classes+1])**2)
             )
             loss = loss + clsf_loss
-            print("Classification loss: ", clsf_loss.item())
+            # print("Classification loss: ", clsf_loss.item())
             # Localization loss
             # localization loss x, y
             loc_loss = lambda_coord * torch.sum(
@@ -153,7 +153,7 @@ def yolo_loss(pred, labels, obj_mask, noobj_mask, device):
                 obj_mask[batch, anchor] * ((torch.sqrt(pred[batch, index_mask+num_classes+3]*(anchors[anchor][1]/img_size)) - torch.sqrt(labels[batch, index_mask+num_classes+3]))**2)
             )
             loss = loss + loc_loss
-            print("Localization loss: ", loc_loss.item())
+            # print("Localization loss: ", loc_loss.item())
         mean_loss = mean_loss + loss
     return mean_loss/batch_size
 

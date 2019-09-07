@@ -21,7 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 gs = 1
 model = YOLOv3().to(device)
-optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=.001)
+optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=.001, betas=(.5, .999))
 
 resume_training = False
 if resume_training:
@@ -78,7 +78,6 @@ for epoch in range(num_epoches):
         optim.step()
         writer.add_scalar("loss/training_loss", loss.item(), gs)
         gs += 1
-        break
     else:
         print("Epoch %d completed."%(epoch+1))
 writer.flush()
